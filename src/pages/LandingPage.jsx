@@ -98,7 +98,7 @@ export const LandingPage = () => {
             <div className="bg-[#FF6B6B] p-2 rounded-lg border-2 border-black">
               <Heart className="text-white fill-white" size={24} />
             </div>
-            <span className="text-2xl font-black italic tracking-tighter">NeuroPal</span>
+            <span className="text-2xl font-black italic tracking-tighter">WeCare</span>
           </motion.div>
 
           <motion.div initial={{ y: -100 }} animate={{ y: 0 }} transition={{ delay: 0.1 }}>
