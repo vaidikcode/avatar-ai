@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Plus, Sparkles, Heart, MessageCircle, Zap } from 'lucide-react';
+import { Plus, Sparkles, MessageCircle, ArrowLeft, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Layout, LoadingBounce } from '../components/Layout';
@@ -44,7 +44,7 @@ export const Dashboard = () => {
   const navigate = useNavigate();
 
   // Fetch avatars
-  const { data: avatars = [], isLoading, error } = useQuery({
+  const { data: avatars = [], isLoading } = useQuery({
     queryKey: ['avatars'],
     queryFn: fetchAvatars,
   });
@@ -52,7 +52,6 @@ export const Dashboard = () => {
   if (isLoading) {
     return (
       <Layout>
-        {/* Matching the Blue Background of Create Screen */}
         <div className="min-h-screen bg-[#4D96FF] flex items-center justify-center"
              style={{ backgroundImage: 'radial-gradient(circle, #ffffff 10%, transparent 10%)', backgroundSize: '30px 30px' }}>
           <div className="bg-white p-8 rounded-3xl border-[3px] border-black shadow-[8px_8px_0px_0px_black]">
@@ -66,21 +65,40 @@ export const Dashboard = () => {
   return (
     <Layout>
       {/* BACKGROUND */}
-      <div className="min-h-screen bg-[#4D96FF] font-sans selection:bg-black selection:text-white pb-24"
+      <div className="min-h-screen bg-[#4D96FF] font-sans selection:bg-black selection:text-white pb-24 relative"
            style={{ backgroundImage: 'radial-gradient(circle, #ffffff 10%, transparent 10%)', backgroundSize: '30px 30px', backgroundColor: '#4D96FF' }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className="max-w-7xl mx-auto px-6 py-8">
           
-          {/* HEADER */}
+          {/* --- TOP NAVIGATION --- */}
+          <div className="flex justify-between items-center mb-8">
+            <motion.button
+              whileHover={{ x: -2, y: -2, boxShadow: "4px 4px 0px 0px black" }}
+              whileTap={{ x: 0, y: 0, boxShadow: "0px 0px 0px 0px black" }}
+              onClick={() => navigate('/')}
+              className="bg-white px-5 py-3 rounded-xl border-[3px] border-black shadow-[2px_2px_0px_0px_black] flex items-center gap-2 group transition-all"
+            >
+              <div className="bg-black text-white p-1 rounded-md group-hover:bg-[#FF6B6B] transition-colors">
+                 <ArrowLeft size={20} strokeWidth={3} />
+              </div>
+              <span className="font-black text-black text-sm md:text-base uppercase tracking-wide hidden sm:block">
+                Back Home
+              </span>
+            </motion.button>
+
+            {/* Optional: User Profile / Settings Button could go here on the right */}
+          </div>
+
+          {/* HEADER CONTENT */}
           <motion.div
             initial={{ y: -50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, type: 'spring', bounce: 0.4 }}
             className="text-center mb-16 relative"
           >
-            {/* Decorative Stars behind header */}
-            <Sparkles className="absolute top-0 left-10 md:left-1/4 w-12 h-12 text-[#FFD93D] animate-pulse" strokeWidth={3} />
-            <Sparkles className="absolute bottom-0 right-10 md:right-1/4 w-8 h-8 text-[#FF6B6B] animate-bounce" strokeWidth={3} />
+            {/* Decorative Stars */}
+            <Sparkles className="absolute top-0 left-4 md:left-1/4 w-12 h-12 text-[#FFD93D] animate-pulse" strokeWidth={3} />
+            <Sparkles className="absolute bottom-0 right-4 md:right-1/4 w-8 h-8 text-[#FF6B6B] animate-bounce" strokeWidth={3} />
 
             <div className="inline-block bg-black text-[#FFD93D] px-6 py-2 rounded-full border-[3px] border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] font-black text-xl -rotate-2 mb-4">
               WELCOME BACK! 👋
