@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useConversation } from '@elevenlabs/react';
 
-export const AgentChat = ({ agentId }) => {
+export const AgentChat = ({ agentId, onSpeakingChange }) => {
   const [error, setError] = useState(null);
   
   // 1. Initialize the SDK Hook
@@ -16,6 +16,13 @@ export const AgentChat = ({ agentId }) => {
   });
 
   const { status, isSpeaking } = conversation;
+
+  // Sync speaking state with parent
+  useEffect(() => {
+    if (onSpeakingChange) {
+      onSpeakingChange(isSpeaking);
+    }
+  }, [isSpeaking, onSpeakingChange]);
 
   // 2. Direct Connection Logic (No Backend)
   const connectToAgent = useCallback(async () => {

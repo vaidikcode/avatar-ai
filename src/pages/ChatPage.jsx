@@ -85,6 +85,13 @@ export const ChatPage = () => {
     }
   };
 
+  // Ensure video stream is attached when session becomes active (and video element mounts)
+  useEffect(() => {
+    if (isSessionActive && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [isSessionActive]);
+
   useEffect(() => {
     // Cleanup on unmount
     return () => {
