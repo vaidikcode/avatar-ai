@@ -1,14 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowLeft } from 'lucide-react';
+import { Sparkles, ArrowLeft, Play, Pause, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Layout, BouncyButton, LoadingBounce } from '../components/Layout';
 
+// Hardcoded ElevenLabs voices with their IDs
+const VOICE_OPTIONS = [
+  {
+    id: 'pNInz6obpgDQGcFmaJgB',
+    name: 'Adam',
+    description: 'Deep, resonant voice',
+    gender: 'Male',
+    age: 'Middle-aged',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pNInz6obpgDQGcFmaJgB/5de3f0db-09ea-4f98-8cef-4e5662a3cdec.mp3'
+  },
+  {
+    id: '21m00Tcm4TlvDq8ikWAM',
+    name: 'Rachel',
+    description: 'Calm, professional voice',
+    gender: 'Female',
+    age: 'Young',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/21m00Tcm4TlvDq8ikWAM/98a34ef2-2140-4c28-9c71-5d5e6e57876c.mp3'
+  },
+  {
+    id: 'EXAVITQu4vr4xnSDxMaL',
+    name: 'Sarah',
+    description: 'Soft, warm voice',
+    gender: 'Female',
+    age: 'Young',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/b936a7a6-e3c4-4eed-90e8-19d6ffa2deef.mp3'
+  },
+  {
+    id: 'nPczCjzI2devNBz1zQrb',
+    name: 'Brian',
+    description: 'Professional, clear voice',
+    gender: 'Male',
+    age: 'Middle-aged',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/nPczCjzI2devNBz1zQrb/2b568345-1d48-4047-b25f-7ddd2b726c13.mp3'
+  },
+  {
+    id: 'AZnzlk1XvdvUeBnXmlld',
+    name: 'Domi',
+    description: 'Strong, confident voice',
+    gender: 'Female',
+    age: 'Young',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/AZnzlk1XvdvUeBnXmlld/35f5e2c3-7c8e-4d46-b910-b27ab68b4953.mp3'
+  },
+  {
+    id: 'ErXwobaYiN019PkySvjV',
+    name: 'Antoni',
+    description: 'Well-rounded, versatile voice',
+    gender: 'Male',
+    age: 'Young',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/ErXwobaYiN019PkySvjV/be2a8fd1-ce31-40c7-839c-e6116f0e56d1.mp3'
+  },
+  {
+    id: 'MF3mGyEYCl7XYWbV9V6O',
+    name: 'Elli',
+    description: 'Energetic, youthful voice',
+    gender: 'Female',
+    age: 'Young',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/MF3mGyEYCl7XYWbV9V6O/5c6747d2-7edd-4668-d09a-6b7c357cc096.mp3'
+  },
+  {
+    id: 'TxGEqnHWrfWFTfGW9XjX',
+    name: 'Josh',
+    description: 'Young, engaging voice',
+    gender: 'Male',
+    age: 'Young',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/TxGEqnHWrfWFTfGW9XjX/5dc6f573-38f8-4a50-b69c-8e5dcf734d18.mp3'
+  },
+  {
+    id: 'VR6AewLTigWG4xSOukaG',
+    name: 'Arnold',
+    description: 'Crisp, authoritative voice',
+    gender: 'Male',
+    age: 'Middle-aged',
+    accent: 'American',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/VR6AewLTigWG4xSOukaG/a81e1c5d-6e80-4eff-92b7-c2e5e0a5c01e.mp3'
+  },
+  {
+    id: 'pFZP5JQG7iQjIQuC4Bku',
+    name: 'Lily',
+    description: 'Raspy, expressive voice',
+    gender: 'Female',
+    age: 'Middle-aged',
+    accent: 'British',
+    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84b-d528b9bbd5f7.mp3'
+  }
+];
+
 export const CreateAvatar = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const audioRef = useRef(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -16,8 +111,10 @@ export const CreateAvatar = () => {
   const [knowledgeBase, setKnowledgeBase] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [voiceId, setVoiceId] = useState('21m00Tcm4TlvDq8ikWAM');
+  const [voiceId, setVoiceId] = useState(VOICE_OPTIONS[0].id);
   const [language, setLanguage] = useState('en');
+  const [playingVoiceId, setPlayingVoiceId] = useState(null);
+  const [showCloneVoicePopup, setShowCloneVoicePopup] = useState(false);
 
   // Generate image mutation
   const generateImageMutation = useMutation({
@@ -84,6 +181,27 @@ export const CreateAvatar = () => {
         model_id: language === 'en' ? 'eleven_turbo_v2' : 'eleven_turbo_v2_5',
       });
     }
+  };
+
+  const handlePlayVoice = (voice) => {
+    if (playingVoiceId === voice.id) {
+      // Stop playing
+      audioRef.current?.pause();
+      setPlayingVoiceId(null);
+    } else {
+      // Play new voice
+      if (audioRef.current && voice.preview_url) {
+        audioRef.current.src = voice.preview_url;
+        audioRef.current.play().catch(err => {
+          console.error('Error playing audio:', err);
+        });
+        setPlayingVoiceId(voice.id);
+      }
+    }
+  };
+
+  const handleAudioEnded = () => {
+    setPlayingVoiceId(null);
   };
 
   return (
@@ -185,20 +303,115 @@ export const CreateAvatar = () => {
                       Describe what your friend should know and how they should behave
                     </p>
                   </div>
-
-                  <BouncyButton
-                    onClick={handleGeneratePrompt}
-                    disabled={!knowledgeBase || generatePromptMutation.isPending}
-                    variant="primary"
-                    className="w-full"
-                  >
-                    {generatePromptMutation.isPending ? '✨ Generating...' : '✨ Generate Personality'}
-                  </BouncyButton>
                 </div>
 
-                {/* Step 3: Voice & Language */}
+                {/* Step 3: Voice Selection */}
                 <div className="bg-green-50 p-6 rounded-2xl space-y-4">
-                  <h3 className="text-2xl font-bold text-slate-800 mb-4">🎤 Step 3: Voice & Language</h3>
+                  <h3 className="text-2xl font-bold text-slate-800 mb-4">🎤 Step 3: Choose Voice</h3>
+                  
+                  <div className="space-y-3">
+                    <label className="block text-lg font-bold text-slate-700 mb-2">
+                      Select a Voice *
+                    </label>
+                    <p className="text-sm text-slate-500 mb-4">
+                      Click to preview and select a voice for your friend
+                    </p>
+                    
+                    {/* Clone Your Voice Button */}
+                    <div className="mb-4">
+                      <button
+                        onClick={() => setShowCloneVoicePopup(true)}
+                        className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg rounded-2xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                      >
+                        <Sparkles className="w-5 h-5" />
+                        Clone Your Own Voice ✨
+                      </button>
+                      <p className="text-xs text-slate-500 text-center mt-2">
+                        Premium feature - Use your own voice for your AI friend
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                      {VOICE_OPTIONS.map((voice) => (
+                        <motion.div
+                          key={voice.id}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => setVoiceId(voice.id)}
+                            className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                              voiceId === voice.id
+                                ? 'border-green-500 bg-green-100 shadow-md'
+                                : 'border-slate-200 bg-white hover:border-green-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-lg font-bold text-slate-800">
+                                    {voice.name}
+                                  </h4>
+                                  {voice.gender && (
+                                    <span className="text-xs px-2 py-1 bg-slate-200 text-slate-600 rounded-full">
+                                      {voice.gender}
+                                    </span>
+                                  )}
+                                  {voice.age && (
+                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
+                                      {voice.age}
+                                    </span>
+                                  )}
+                                  {voice.accent && (
+                                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-600 rounded-full">
+                                      {voice.accent}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-slate-600 mt-1">
+                                  {voice.description || 'Professional voice'}
+                                </p>
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {voice.preview_url && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePlayVoice(voice);
+                                    }}
+                                    className={`p-3 rounded-full transition-colors ${
+                                      playingVoiceId === voice.id
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                                    }`}
+                                  >
+                                    {playingVoiceId === voice.id ? (
+                                      <Pause className="w-5 h-5" />
+                                    ) : (
+                                      <Play className="w-5 h-5" />
+                                    )}
+                                  </button>
+                                )}
+                                
+                                {voiceId === voice.id && (
+                                  <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className="p-2 bg-green-500 rounded-full"
+                                  >
+                                    <Check className="w-5 h-5 text-white" />
+                                  </motion.div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                  </div>
+                </div>
+
+                {/* Step 4: Language */}
+                <div className="bg-orange-50 p-6 rounded-2xl space-y-4">
+                  <h3 className="text-2xl font-bold text-slate-800 mb-4">🌍 Step 4: Language</h3>
                   
                   <div>
                     <label className="block text-lg font-bold text-slate-700 mb-2">
@@ -215,6 +428,18 @@ export const CreateAvatar = () => {
                       <option value="fr">French 🇫🇷</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Step 5: Generate Personality */}
+                <div className="bg-purple-50 p-6 rounded-2xl space-y-4">
+                  <BouncyButton
+                    onClick={handleGeneratePrompt}
+                    disabled={!knowledgeBase || generatePromptMutation.isPending}
+                    variant="primary"
+                    className="w-full"
+                  >
+                    {generatePromptMutation.isPending ? '✨ Generating...' : '✨ Generate Personality'}
+                  </BouncyButton>
                 </div>
               </div>
 
@@ -279,6 +504,13 @@ export const CreateAvatar = () => {
               </div>
             </div>
 
+            {/* Hidden audio element for playing voice samples */}
+            <audio
+              ref={audioRef}
+              onEnded={handleAudioEnded}
+              className="hidden"
+            />
+
             {createAvatarMutation.isError && (
               <div className="mt-6 p-4 bg-red-50 rounded-2xl border-2 border-red-200">
                 <p className="text-red-600 text-center text-lg">
@@ -298,6 +530,82 @@ export const CreateAvatar = () => {
             )}
           </div>
         </motion.div>
+
+        {/* Clone Voice Premium Popup */}
+        {showCloneVoicePopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+            onClick={() => setShowCloneVoicePopup(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', bounce: 0.4 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border-4 border-purple-200"
+            >
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-white" />
+                </div>
+                
+                <h2 className="text-3xl font-bold text-slate-800 mb-4">
+                  Clone Your Voice 🎤
+                </h2>
+                
+                <p className="text-lg text-slate-600 mb-6">
+                  Create an AI that sounds exactly like you! Upload voice samples and we'll train a custom voice model.
+                </p>
+                
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-6">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="text-4xl font-bold text-purple-600">$5</span>
+                    <span className="text-slate-600">/month</span>
+                  </div>
+                  <p className="text-sm text-slate-600">
+                    Premium Feature - Unlimited voice clones
+                  </p>
+                </div>
+                
+                <ul className="text-left text-slate-600 mb-6 space-y-2">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-green-500" />
+                    High-quality voice cloning
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-green-500" />
+                    Unlimited custom voices
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-green-500" />
+                    Priority support
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-5 h-5 text-green-500" />
+                    Advanced voice editing
+                  </li>
+                </ul>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowCloneVoicePopup(false)}
+                    className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-300 transition-colors"
+                  >
+                    Maybe Later
+                  </button>
+                  <button
+                    
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-2xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    Upgrade Now
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </div>
     </Layout>
   );
