@@ -1,0 +1,163 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import os
+import requests
+import io
+import time
+from supabase import create_client, Client
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+genai.configure(api_key=GOOGLE_API_KEY)
+gemini_model = genai.GenerativeModel('gemini-flash-latest')
+
+BUCKET_NAME = "avatar-images"
+
+class ImageRequest(BaseModel):
+    name: str
+    description: str = "portrait"
+
+class PromptRequest(BaseModel):
+    knowledge_base: str
+
+class AgentRequest(BaseModel):
+    name: str
+    image_url: str = None
+    system_prompt: str
+    voice_id: str
+    language: str = "en"
+    first_message: str = "Hello, how can I help you?"
+    model_id: str = "eleven_turbo_v2_5"
+
+app = FastAPI()
+
+@app.get("/api")
+def health_check():
+    return {"status": "FastAPI is running", "docs_url": "/docs"}
+
+
+# ==========================================
+# STEP 1: Generate Image & Upload to Supabase
+# ==========================================
+@app.post("/api/generate-image")
+def generate_image(request: ImageRequest):
+    try:
+        encoded_prompt = requests.utils.quote(f"{request.name} {request.description}")
+        pollination_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=512&seed={int(time.time())}&nologo=true"
+        
+        image_response = requests.get(pollination_url)
+        image_response.raise_for_status()
+
+        filename = f"{request.name.replace(' ', '_').lower()}_{int(time.time())}.jpg"
+        
+        supabase.storage.from_(BUCKET_NAME).upload(
+            path=filename,
+            file=image_response.content,
+            file_options={"content-type": "image/jpeg"}
+        )
+
+        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(filename)
+
+        return {
+            "message": "Image generated successfully",
+            "image_url": public_url,
+            "avatar_name": request.name
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# STEP 2: Generate System Prompt using Gemini
+# ==========================================
+@app.post("/api/generate-prompt")
+def generate_prompt(request: PromptRequest):
+    try:
+        meta_prompt = f"""
+        You are an expert at creating system prompts for conversational AI agents. 
+        Task: Create a concise, engaging system prompt for an AI agent based on this knowledge description:
+        "{request.knowledge_base}"
+        The prompt should define the agent's persona, capabilities, and behavioral constraints.
+        Generated System Prompt:
+        """
+
+        response = gemini_model.generate_content(meta_prompt)
+        
+        return {
+            "message": "System prompt generated",
+            "system_prompt": response.text
+        }
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# STEP 3: Create ElevenLabs Agent & Save to DB
+# ==========================================
+@app.post("/api/create-agent")
+def create_agent(request: AgentRequest):
+    try:
+        # 1. Call ElevenLabs API
+        el_url = "https://api.elevenlabs.io/v1/convai/agents/create"
+        headers = {
+            "xi-api-key": ELEVENLABS_API_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        el_payload = {
+            "name": request.name,
+            "conversation_config": {
+                "agent": {
+                    "prompt": { "prompt": request.system_prompt },
+                    "first_message": request.first_message,
+                    "language": request.language
+                },
+                "tts": {
+                    "voice_id": request.voice_id,
+                    "model_id": request.model_id
+                }
+            }
+        }
+
+        el_response = requests.post(el_url, json=el_payload, headers=headers)
+        
+        if el_response.status_code != 200:
+            raise HTTPException(status_code=el_response.status_code, detail=f"ElevenLabs Error: {el_response.text}")
+
+        agent_id = el_response.json().get('agent_id')
+
+        # 2. Store in Supabase Database
+        db_payload = {
+            "name": request.name,
+            "image_url": request.image_url,
+            "system_prompt": request.system_prompt,
+            "agent_id": agent_id,
+            "voice_id": request.voice_id,
+            "language": request.language,
+            "first_message": request.first_message
+        }
+
+        db_data, _ = supabase.table('avatars').insert(db_payload).execute()
+
+        return {
+            "message": "Avatar created successfully!",
+            "agent_id": agent_id,
+            "db_record": db_data[1][0] if db_data[1] else None
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
