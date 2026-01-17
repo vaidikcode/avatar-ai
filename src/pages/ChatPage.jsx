@@ -1,10 +1,47 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Video, VideoOff, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, Video, VideoOff, Mic, MicOff, MessageCircle, Radio, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Layout, BouncyButton } from '../components/Layout';
+import { Layout } from '../components/Layout';
 import { AgentChat } from '../components/AgentChat';
 import { AvatarView } from '../components/AvatarView';
+
+// --- NEO-POP COMPONENTS ---
+
+// 1. Hard Shadow Button
+const PopButton = ({ onClick, disabled, children, colorClass = 'bg-black text-white', icon: Icon, className = '' }) => (
+  <motion.button
+    whileHover={{ x: -2, y: -2 }}
+    whileTap={{ x: 2, y: 2 }}
+    onClick={onClick}
+    disabled={disabled}
+    className={`
+      relative py-4 px-6 rounded-xl font-black text-xl border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+      flex items-center justify-center gap-3 transition-all
+      ${disabled ? 'opacity-50 grayscale cursor-not-allowed' : `${colorClass} hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]`}
+      ${className}
+    `}
+  >
+    {Icon && <Icon size={24} strokeWidth={3} />}
+    {children}
+  </motion.button>
+);
+
+// 2. Circle Control Button (For Mic/Cam)
+const ControlButton = ({ onClick, isActive, onIcon: OnIcon, offIcon: OffIcon }) => (
+  <motion.button
+    whileHover={{ scale: 1.1 }}
+    whileTap={{ scale: 0.9 }}
+    onClick={onClick}
+    className={`
+      w-16 h-16 rounded-full border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+      flex items-center justify-center transition-colors
+      ${isActive ? 'bg-white text-black' : 'bg-[#FF6B6B] text-white'}
+    `}
+  >
+    {isActive ? <OnIcon size={24} strokeWidth={3} /> : <OffIcon size={24} strokeWidth={3} />}
+  </motion.button>
+);
 
 export const ChatPage = () => {
   const navigate = useNavigate();
@@ -34,7 +71,7 @@ export const ChatPage = () => {
       const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
       if (!cloudName || !uploadPreset) {
-        throw new Error('Missing Cloudinary config: set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET');
+        throw new Error('Missing Cloudinary config');
       }
 
       const formData = new FormData();
@@ -43,20 +80,13 @@ export const ChatPage = () => {
 
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        }
+        { method: 'POST', body: formData }
       );
 
-      if (!response.ok) {
-        throw new Error(`Cloudinary upload failed with status ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Cloudinary upload failed: ${response.status}`);
 
       const data = await response.json();
-      console.log('Cloudinary URL for recorded session:', data.secure_url || data.url);
-
-      // TODO: Save (data.secure_url || data.url) in your DB if needed.
+      console.log('Cloudinary URL:', data.secure_url || data.url);
     } catch (error) {
       console.error('Error uploading recorded session:', error);
     }
@@ -69,30 +99,20 @@ export const ChatPage = () => {
         audio: true,
       });
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
+      if (videoRef.current) videoRef.current.srcObject = stream;
       streamRef.current = stream;
-      // Set up MediaRecorder for this stream
-      try {
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'video/webm;codecs=vp9',
-        });
 
+      try {
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
         recordedChunksRef.current = [];
 
         mediaRecorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            recordedChunksRef.current.push(event.data);
-          }
+          if (event.data && event.data.size > 0) recordedChunksRef.current.push(event.data);
         };
 
         mediaRecorder.onstop = async () => {
           if (recordedChunksRef.current.length > 0) {
-            const recordedBlob = new Blob(recordedChunksRef.current, {
-              type: 'video/webm',
-            });
+            const recordedBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
             recordedChunksRef.current = [];
             await handleRecordingFinished(recordedBlob);
           }
@@ -118,21 +138,17 @@ export const ChatPage = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
-
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    if (videoRef.current) videoRef.current.srcObject = null;
     setIsCameraOn(false);
     setIsMicOn(false);
   };
 
   const toggleCamera = () => {
     if (!streamRef.current) return;
-    
     const videoTrack = streamRef.current.getVideoTracks()[0];
     if (videoTrack) {
       videoTrack.enabled = !videoTrack.enabled;
@@ -142,7 +158,6 @@ export const ChatPage = () => {
 
   const toggleMic = () => {
     if (!streamRef.current) return;
-    
     const audioTrack = streamRef.current.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
@@ -160,7 +175,6 @@ export const ChatPage = () => {
     }
   };
 
-  // Ensure video stream is attached when session becomes active (and video element mounts)
   useEffect(() => {
     if (isSessionActive && streamRef.current && videoRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -168,188 +182,189 @@ export const ChatPage = () => {
   }, [isSessionActive]);
 
   useEffect(() => {
-    // Cleanup on unmount
-    return () => {
-      stopWebcam();
-    };
+    return () => stopWebcam();
   }, []);
 
-  if (!avatar) {
-    return null;
-  }
+  if (!avatar) return null;
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Header with Back Button */}
-        <motion.div
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, type: 'spring', bounce: 0.4 }}
-          className="mb-12"
-        >
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-800 mb-6 text-lg font-semibold transition-colors"
+      <div className="min-h-screen bg-[#4D96FF] font-sans selection:bg-black selection:text-white pb-24"
+           style={{ backgroundImage: 'radial-gradient(circle, #ffffff 10%, transparent 10%)', backgroundSize: '30px 30px', backgroundColor: '#4D96FF' }}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          
+          {/* HEADER */}
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, type: 'spring', bounce: 0.4 }}
+            className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6"
           >
-            <ArrowLeft className="w-6 h-6" />
-            Back to Dashboard
-          </button>
+             <div className="flex items-center gap-4">
+                <PopButton onClick={() => navigate('/dashboard')} colorClass="bg-white text-black" icon={ArrowLeft} className="w-auto">
+                  Back
+                </PopButton>
+             </div>
 
-          <div>
-            <h1 className="text-5xl font-bold text-slate-800 mb-2">{avatar.name}</h1>
-            <p className="text-2xl text-slate-500">Let's have a chat! 💬</p>
-          </div>
-        </motion.div>
+             <div className="text-right">
+                <h1 className="text-5xl font-black text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] uppercase tracking-tight"
+                    style={{ WebkitTextStroke: '2px black' }}>
+                  Chat with {avatar.name}
+                </h1>
+                <p className="text-xl font-black text-black uppercase mt-1">Let's have some fun! 💬</p>
+             </div>
+          </motion.div>
 
-        {/* Main Content */}
-        <div className="bg-gradient-to-br from-white via-blue-50 to-purple-50 rounded-3xl shadow-2xl p-8 border-4 border-white">
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Left Side - Avatar */}
-            <div className="space-y-6">
+          {/* MAIN GRID */}
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            
+            {/* LEFT SIDE: AVATAR DISPLAY (TV Style) */}
+            <div className="space-y-8">
+              
+              {/* The "TV" Frame */}
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: 'spring', bounce: 0.5 }}
-                className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100 shadow-2xl relative"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="relative bg-[#FFD93D] p-4 rounded-[40px] border-[4px] border-black shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
               >
-                {isSessionActive ? (
-                  <AvatarView isSpeaking={isAvatarSpeaking} />
-                ) : (
-                  <img
-                    src={avatar.image_url}
-                    alt={avatar.name}
-                    className="w-full h-full object-cover"
-                  />
-                )}
+                {/* Antenna Decoration */}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-12 border-l-[4px] border-r-[4px] border-black border-t-0 opacity-0 md:opacity-100 rotate-12"></div>
+                
+                <div className="bg-white border-[3px] border-black rounded-[30px] overflow-hidden aspect-square relative shadow-[inset_0px_0px_20px_rgba(0,0,0,0.1)]">
+                   {isSessionActive ? (
+                      <AvatarView isSpeaking={isAvatarSpeaking} />
+                   ) : (
+                      <img
+                        src={avatar.image_url}
+                        alt={avatar.name}
+                        className="w-full h-full object-cover"
+                      />
+                   )}
+                   
+                   {/* "On Air" Indicator */}
+                   {isSessionActive && (
+                     <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full border-2 border-white shadow-md flex items-center gap-2 animate-pulse">
+                        <div className="w-3 h-3 bg-white rounded-full"></div>
+                        <span className="font-black text-xs uppercase">Live</span>
+                     </div>
+                   )}
+                </div>
+
+                {/* TV Knobs Decoration */}
+                <div className="mt-4 flex justify-between items-center px-4">
+                   <div className="flex gap-2">
+                      <div className="w-4 h-4 rounded-full bg-black"></div>
+                      <div className="w-4 h-4 rounded-full bg-black/50"></div>
+                      <div className="w-4 h-4 rounded-full bg-black/50"></div>
+                   </div>
+                   <div className="h-2 w-32 bg-black/10 rounded-full"></div>
+                </div>
               </motion.div>
 
-              {/* Avatar Info */}
+              {/* Avatar Info Card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg"
+                className="bg-[#A29BFE] border-[3px] border-black rounded-3xl p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rotate-[-1deg]"
               >
-                <h3 className="text-xl font-bold text-slate-800 mb-3">
-                  About {avatar.name}
+                <h3 className="text-2xl font-black text-black mb-2 uppercase flex items-center gap-2">
+                  <Radio size={24} /> About {avatar.name}
                 </h3>
-                <p className="text-slate-600 text-lg line-clamp-4">
+                <p className="font-bold text-black/80 text-lg leading-snug">
                   {avatar.system_prompt}
                 </p>
               </motion.div>
             </div>
 
-            {/* Right Side - Interaction */}
+            {/* RIGHT SIDE: INTERACTION ZONE */}
             <div className="space-y-6">
-              {/* Start Talking Button */}
+              
+              {/* START BUTTON STATE */}
               {!isSessionActive && (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.4, type: 'spring', bounce: 0.6 }}
-                  className="flex flex-col items-center"
+                  className="flex flex-col items-center justify-center min-h-[400px] bg-white/50 rounded-[40px] border-[4px] border-black border-dashed p-8"
                 >
                   <motion.div
-                    animate={{
-                      scale: [1, 1.1, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                    }}
+                    animate={{ scale: [1, 1.05, 1], rotate: [0, 2, -2, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-full"
                   >
-                    <BouncyButton
+                    <PopButton
                       onClick={handleStartTalking}
-                      variant="success"
-                      className="text-2xl px-12 py-6 shadow-2xl"
+                      colorClass="bg-[#6BCB77] text-white"
+                      className="text-3xl py-8 w-full shadow-[8px_8px_0px_0px_black] hover:shadow-[12px_12px_0px_0px_black]"
                     >
-                      🎤 Start Talking
-                    </BouncyButton>
+                      <Mic size={40} strokeWidth={3} className="mr-4" />
+                      START TALKING
+                    </PopButton>
                   </motion.div>
-                  <p className="text-slate-500 text-lg mt-4 text-center">
-                    Click to start your conversation!
+                  <p className="font-black text-black/60 text-xl mt-6 uppercase text-center">
+                    Click the Green Button to start your conversation!
                   </p>
                 </motion.div>
               )}
 
-              {/* Active Session */}
+              {/* ACTIVE SESSION STATE */}
               {isSessionActive && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
                   className="space-y-6"
                 >
-                  {/* Webcam View */}
-                  <div className="relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl aspect-video">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover scale-x-[-1]"
-                    />
-                    
-                    {!isCameraOn && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
-                        <VideoOff className="w-16 h-16 text-slate-500" />
-                      </div>
-                    )}
-
-                    {/* Overlay Controls */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-4">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={toggleCamera}
-                        className={`p-4 rounded-full shadow-lg transition-colors ${
-                          isCameraOn
-                            ? 'bg-white text-slate-700'
-                            : 'bg-red-500 text-white'
-                        }`}
-                      >
-                        {isCameraOn ? (
-                          <Video className="w-6 h-6" />
-                        ) : (
-                          <VideoOff className="w-6 h-6" />
+                  {/* Webcam Frame (The "Monitor") */}
+                  <div className="relative rounded-[30px] overflow-hidden bg-black border-[4px] border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="aspect-video relative bg-slate-800">
+                        <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover scale-x-[-1]"
+                        />
+                        
+                        {!isCameraOn && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#2d3436] text-white/50 gap-2">
+                            <VideoOff className="w-16 h-16" strokeWidth={1.5} />
+                            <span className="font-black uppercase">Camera Off</span>
+                        </div>
                         )}
-                      </motion.button>
+                    </div>
 
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={toggleMic}
-                        className={`p-4 rounded-full shadow-lg transition-colors ${
-                          isMicOn
-                            ? 'bg-white text-slate-700'
-                            : 'bg-red-500 text-white'
-                        }`}
-                      >
-                        {isMicOn ? (
-                          <Mic className="w-6 h-6" />
-                        ) : (
-                          <MicOff className="w-6 h-6" />
-                        )}
-                      </motion.button>
+                    {/* Floating Controls */}
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-6">
+                        <ControlButton onClick={toggleCamera} isActive={isCameraOn} onIcon={Video} offIcon={VideoOff} />
+                        <ControlButton onClick={toggleMic} isActive={isMicOn} onIcon={Mic} offIcon={MicOff} />
                     </div>
                   </div>
 
-                  {/* ElevenLabs Chat Component */}
-                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <AgentChat 
-                      agentId={avatar.agent_id} 
-                      onSpeakingChange={setIsAvatarSpeaking} 
-                    />
+                  {/* Chat Box / Transcript Area */}
+                  <div className="bg-white border-[3px] border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                    <div className="flex items-center gap-2 mb-4 border-b-2 border-black/10 pb-2">
+                       <MessageCircle size={20} />
+                       <span className="font-black uppercase text-sm">Conversation Log</span>
+                    </div>
+                    {/* ElevenLabs Chat Component */}
+                    <div className="min-h-[100px]">
+                       <AgentChat 
+                        agentId={avatar.agent_id} 
+                        onSpeakingChange={setIsAvatarSpeaking} 
+                        />
+                    </div>
                   </div>
 
                   {/* End Session Button */}
-                  <BouncyButton
+                  <PopButton
                     onClick={handleStartTalking}
-                    variant="danger"
-                    className="w-full text-xl"
+                    colorClass="bg-[#FF6B6B] text-white"
+                    icon={X}
                   >
-                    End Conversation
-                  </BouncyButton>
+                    END CONVERSATION
+                  </PopButton>
                 </motion.div>
               )}
             </div>
