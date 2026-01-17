@@ -14,8 +14,7 @@ const VOICE_OPTIONS = [
     description: 'Deep, resonant voice',
     gender: 'Male',
     age: 'Middle-aged',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pNInz6obpgDQGcFmaJgB/5de3f0db-09ea-4f98-8cef-4e5662a3cdec.mp3'
+    accent: 'American'
   },
   {
     id: '21m00Tcm4TlvDq8ikWAM',
@@ -23,8 +22,7 @@ const VOICE_OPTIONS = [
     description: 'Calm, professional voice',
     gender: 'Female',
     age: 'Young',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/21m00Tcm4TlvDq8ikWAM/98a34ef2-2140-4c28-9c71-5d5e6e57876c.mp3'
+    accent: 'American'
   },
   {
     id: 'EXAVITQu4vr4xnSDxMaL',
@@ -32,8 +30,7 @@ const VOICE_OPTIONS = [
     description: 'Soft, warm voice',
     gender: 'Female',
     age: 'Young',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/b936a7a6-e3c4-4eed-90e8-19d6ffa2deef.mp3'
+    accent: 'American'
   },
   {
     id: 'nPczCjzI2devNBz1zQrb',
@@ -41,8 +38,7 @@ const VOICE_OPTIONS = [
     description: 'Professional, clear voice',
     gender: 'Male',
     age: 'Middle-aged',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/nPczCjzI2devNBz1zQrb/2b568345-1d48-4047-b25f-7ddd2b726c13.mp3'
+    accent: 'American'
   },
   {
     id: 'AZnzlk1XvdvUeBnXmlld',
@@ -50,8 +46,7 @@ const VOICE_OPTIONS = [
     description: 'Strong, confident voice',
     gender: 'Female',
     age: 'Young',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/AZnzlk1XvdvUeBnXmlld/35f5e2c3-7c8e-4d46-b910-b27ab68b4953.mp3'
+    accent: 'American'
   },
   {
     id: 'ErXwobaYiN019PkySvjV',
@@ -59,8 +54,7 @@ const VOICE_OPTIONS = [
     description: 'Well-rounded, versatile voice',
     gender: 'Male',
     age: 'Young',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/ErXwobaYiN019PkySvjV/be2a8fd1-ce31-40c7-839c-e6116f0e56d1.mp3'
+    accent: 'American'
   },
   {
     id: 'MF3mGyEYCl7XYWbV9V6O',
@@ -68,8 +62,7 @@ const VOICE_OPTIONS = [
     description: 'Energetic, youthful voice',
     gender: 'Female',
     age: 'Young',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/MF3mGyEYCl7XYWbV9V6O/5c6747d2-7edd-4668-d09a-6b7c357cc096.mp3'
+    accent: 'American'
   },
   {
     id: 'TxGEqnHWrfWFTfGW9XjX',
@@ -77,8 +70,7 @@ const VOICE_OPTIONS = [
     description: 'Young, engaging voice',
     gender: 'Male',
     age: 'Young',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/TxGEqnHWrfWFTfGW9XjX/5dc6f573-38f8-4a50-b69c-8e5dcf734d18.mp3'
+    accent: 'American'
   },
   {
     id: 'VR6AewLTigWG4xSOukaG',
@@ -86,8 +78,7 @@ const VOICE_OPTIONS = [
     description: 'Crisp, authoritative voice',
     gender: 'Male',
     age: 'Middle-aged',
-    accent: 'American',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/VR6AewLTigWG4xSOukaG/a81e1c5d-6e80-4eff-92b7-c2e5e0a5c01e.mp3'
+    accent: 'American'
   },
   {
     id: 'pFZP5JQG7iQjIQuC4Bku',
@@ -95,15 +86,13 @@ const VOICE_OPTIONS = [
     description: 'Raspy, expressive voice',
     gender: 'Female',
     age: 'Middle-aged',
-    accent: 'British',
-    preview_url: 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/89b68b35-b3dd-4348-a84b-d528b9bbd5f7.mp3'
+    accent: 'British'
   }
 ];
 
 export const CreateAvatar = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const audioRef = useRef(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -113,7 +102,6 @@ export const CreateAvatar = () => {
   const [systemPrompt, setSystemPrompt] = useState('');
   const [voiceId, setVoiceId] = useState(VOICE_OPTIONS[0].id);
   const [language, setLanguage] = useState('en');
-  const [playingVoiceId, setPlayingVoiceId] = useState(null);
   const [showCloneVoicePopup, setShowCloneVoicePopup] = useState(false);
 
   // Generate image mutation
@@ -181,27 +169,6 @@ export const CreateAvatar = () => {
         model_id: language === 'en' ? 'eleven_turbo_v2' : 'eleven_turbo_v2_5',
       });
     }
-  };
-
-  const handlePlayVoice = (voice) => {
-    if (playingVoiceId === voice.id) {
-      // Stop playing
-      audioRef.current?.pause();
-      setPlayingVoiceId(null);
-    } else {
-      // Play new voice
-      if (audioRef.current && voice.preview_url) {
-        audioRef.current.src = voice.preview_url;
-        audioRef.current.play().catch(err => {
-          console.error('Error playing audio:', err);
-        });
-        setPlayingVoiceId(voice.id);
-      }
-    }
-  };
-
-  const handleAudioEnded = () => {
-    setPlayingVoiceId(null);
   };
 
   return (
@@ -314,7 +281,7 @@ export const CreateAvatar = () => {
                       Select a Voice *
                     </label>
                     <p className="text-sm text-slate-500 mb-4">
-                      Click to preview and select a voice for your friend
+                      Select a voice for your friend. You'll hear them in action once you create the avatar!
                     </p>
                     
                     {/* Clone Your Voice Button */}
@@ -371,37 +338,15 @@ export const CreateAvatar = () => {
                                 </p>
                               </div>
                               
-                              <div className="flex items-center gap-2">
-                                {voice.preview_url && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePlayVoice(voice);
-                                    }}
-                                    className={`p-3 rounded-full transition-colors ${
-                                      playingVoiceId === voice.id
-                                        ? 'bg-green-500 text-white'
-                                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                                    }`}
-                                  >
-                                    {playingVoiceId === voice.id ? (
-                                      <Pause className="w-5 h-5" />
-                                    ) : (
-                                      <Play className="w-5 h-5" />
-                                    )}
-                                  </button>
-                                )}
-                                
-                                {voiceId === voice.id && (
-                                  <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="p-2 bg-green-500 rounded-full"
-                                  >
-                                    <Check className="w-5 h-5 text-white" />
-                                  </motion.div>
-                                )}
-                              </div>
+                              {voiceId === voice.id && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="p-2 bg-green-500 rounded-full"
+                                >
+                                  <Check className="w-5 h-5 text-white" />
+                                </motion.div>
+                              )}
                             </div>
                           </motion.div>
                         ))}
@@ -503,13 +448,6 @@ export const CreateAvatar = () => {
                 )}
               </div>
             </div>
-
-            {/* Hidden audio element for playing voice samples */}
-            <audio
-              ref={audioRef}
-              onEnded={handleAudioEnded}
-              className="hidden"
-            />
 
             {createAvatarMutation.isError && (
               <div className="mt-6 p-4 bg-red-50 rounded-2xl border-2 border-red-200">
