@@ -4,6 +4,7 @@ import { ArrowLeft, Video, VideoOff, Mic, MicOff } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Layout, BouncyButton } from '../components/Layout';
 import { AgentChat } from '../components/AgentChat';
+import { AvatarView } from '../components/AvatarView';
 
 export const ChatPage = () => {
   const navigate = useNavigate();
@@ -13,8 +14,12 @@ export const ChatPage = () => {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [isMicOn, setIsMicOn] = useState(false);
+  const [isAvatarSpeaking, setIsAvatarSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   // Redirect if no avatar data
   useEffect(() => {
@@ -22,6 +27,40 @@ export const ChatPage = () => {
       navigate('/dashboard');
     }
   }, [avatar, navigate]);
+
+  const handleRecordingFinished = async (recordedBlob) => {
+    try {
+      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+      if (!cloudName || !uploadPreset) {
+        throw new Error('Missing Cloudinary config: set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET');
+      }
+
+      const formData = new FormData();
+      formData.append('file', recordedBlob, `session_${Date.now()}.webm`);
+      formData.append('upload_preset', uploadPreset);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Cloudinary upload failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Cloudinary URL for recorded session:', data.secure_url || data.url);
+
+      // TODO: Save (data.secure_url || data.url) in your DB if needed.
+    } catch (error) {
+      console.error('Error uploading recorded session:', error);
+    }
+  };
 
   const startWebcam = async () => {
     try {
@@ -35,6 +74,38 @@ export const ChatPage = () => {
       }
       
       streamRef.current = stream;
+      // Set up MediaRecorder for this stream
+      try {
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'video/webm;codecs=vp9',
+        });
+
+        recordedChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          if (recordedChunksRef.current.length > 0) {
+            const recordedBlob = new Blob(recordedChunksRef.current, {
+              type: 'video/webm',
+            });
+            recordedChunksRef.current = [];
+            await handleRecordingFinished(recordedBlob);
+          }
+          setIsRecording(false);
+        };
+
+        mediaRecorder.start();
+        mediaRecorderRef.current = mediaRecorder;
+        setIsRecording(true);
+      } catch (recorderError) {
+        console.error('Error starting MediaRecorder:', recorderError);
+      }
+
       setIsCameraOn(true);
       setIsMicOn(true);
     } catch (error) {
@@ -44,6 +115,10 @@ export const ChatPage = () => {
   };
 
   const stopWebcam = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -136,13 +211,17 @@ export const ChatPage = () => {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: 'spring', bounce: 0.5 }}
-                className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100 shadow-2xl"
+                className="aspect-square rounded-3xl overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100 shadow-2xl relative"
               >
-                <img
-                  src={avatar.image_url}
-                  alt={avatar.name}
-                  className="w-full h-full object-cover"
-                />
+                {isSessionActive ? (
+                  <AvatarView isSpeaking={isAvatarSpeaking} />
+                ) : (
+                  <img
+                    src={avatar.image_url}
+                    alt={avatar.name}
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </motion.div>
 
               {/* Avatar Info */}
@@ -257,7 +336,10 @@ export const ChatPage = () => {
 
                   {/* ElevenLabs Chat Component */}
                   <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-                    <AgentChat agentId={avatar.agent_id} />
+                    <AgentChat 
+                      agentId={avatar.agent_id} 
+                      onSpeakingChange={setIsAvatarSpeaking} 
+                    />
                   </div>
 
                   {/* End Session Button */}
