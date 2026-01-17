@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Sparkles, Heart } from 'lucide-react';
 import axios from 'axios';
-import { Layout, BouncyButton, LoadingBounce, Card } from './Layout';
-import { AvatarModal } from './AvatarModal';
+import { Layout, BouncyButton, LoadingBounce, Card } from '../components/Layout';
+import { AvatarModal } from '../components/AvatarModal';
 
 const fetchAvatars = async () => {
   const response = await axios.get('/api/avatars');
