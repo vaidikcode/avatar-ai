@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import axios from 'axios'
+import { AgentChat } from './components/AgentChat'
 
 function App() {
   // Step 1: Name & Image Generation
@@ -261,6 +262,17 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* STEP 4: Chat with Agent */}
+      {agentId && (
+        <div className="step">
+          <h2>
+            <span className="step-number">4</span>
+            Chat with Your Agent
+          </h2>
+          <AgentChat agentId={agentId} />
+        </div>
+      )}
     </div>
   )
 }
