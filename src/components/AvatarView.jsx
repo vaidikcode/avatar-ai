@@ -22,51 +22,73 @@ const AvatarModel = ({ isSpeaking }) => {
         }
       }
     });
+
+    if (!headMeshRef.current) {
+      console.warn('AvatarView: Could not find head mesh with morph targets.');
+    } else {
+      console.log('AvatarView: Using mesh for lip sync:', headMeshRef.current.name);
+      console.log('Available morph targets:', Object.keys(headMeshRef.current.morphTargetDictionary));
+    }
   }, [clone]);
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     
-    // Slight natural head movement (idle)
-    const headRotationX = Math.sin(t * 1) * 0.02;
-    const headRotationY = Math.sin(t * 0.5) * 0.05;
+    // Stronger natural head/body movement so motion is clearly visible
+    const headRotationX = Math.sin(t * 1) * 0.08;
+    const headRotationY = Math.sin(t * 0.5) * 0.12;
     
     clone.rotation.y = headRotationY;
     clone.rotation.x = headRotationX;
 
-    // Talking Animation (Simple Sine Wave)
+    // Talking Animation (Simple Sine Wave on mouth / jaw blendshape)
     if (headMeshRef.current && headMeshRef.current.morphTargetDictionary && headMeshRef.current.morphTargetInfluences) {
-        // Try to find the correct morph target for mouth opening
-        const mouthOpenIndex = headMeshRef.current.morphTargetDictionary['mouthOpen'] || 
-                               headMeshRef.current.morphTargetDictionary['viseme_aa'] ||
-                               headMeshRef.current.morphTargetDictionary['jawOpen'];
+        const dict = headMeshRef.current.morphTargetDictionary;
+
+        // First try common Ready Player Me / viseme names
+        let mouthOpenIndex =
+          dict['mouthOpen'] ??
+          dict['viseme_aa'] ??
+          dict['jawOpen'];
+
+        // If not found, fall back to any morph target that looks like a mouth/jaw/viseme target
+        if (mouthOpenIndex === undefined) {
+          const mouthKey = Object.keys(dict).find((key) => {
+            const k = key.toLowerCase();
+            return k.includes('jaw') || k.includes('mouth') || k.includes('viseme') || k.includes('aa');
+          });
+          if (mouthKey) {
+            mouthOpenIndex = dict[mouthKey];
+          }
+        }
         
         if (mouthOpenIndex !== undefined) {
-             const targetOpen = isSpeaking ? (Math.sin(t * 20) * 0.6 + 0.2) : 0;
+             const targetOpen = isSpeaking ? (Math.sin(t * 20) * 0.6 + 0.3) : 0;
              headMeshRef.current.morphTargetInfluences[mouthOpenIndex] = THREE.MathUtils.lerp(
                 headMeshRef.current.morphTargetInfluences[mouthOpenIndex],
                 targetOpen,
-                0.2
+                0.3
              );
         }
     }
   });
 
-  // Scale smaller, position so face is at camera level
-  // Scale 0.6 -> head at ~1.0m. Push down by -0.95 -> head at Y=0.05
-  return <primitive object={clone} scale={0.6} position={[0, -0.95, 0]} />;
+  // Move the avatar up so the camera sees more of the torso and face
+  return <primitive object={clone} scale={1} position={[0, 0.6, 0]} />;
 };
 
 export const AvatarView = ({ isSpeaking }) => {
   return (
     <div className="w-full h-full absolute inset-0 bg-gradient-to-b from-blue-50 to-purple-100">
       <Canvas
-        camera={{ position: [0, 0.05, 0.35], fov: 30 }}
-        onCreated={({ gl }) => {
+        camera={{ position: [0, 1.6, 2.2], fov: 30 }}
+        onCreated={({ gl, camera }) => {
           // Disable shader error checking logs to avoid noisy X4122/X4008 warnings
           if (gl && gl.debug) {
             gl.debug.checkShaderErrors = false;
           }
+          // Look slightly down towards the head area
+          camera.lookAt(0, 1.2, 0);
         }}
       >
         <ambientLight intensity={1} />

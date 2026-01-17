@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -75,6 +75,7 @@ export const CreateAvatar = () => {
   const queryClient = useQueryClient();
   const [playingVoice, setPlayingVoice] = useState(null);
   const [showCloneVoicePopup, setShowCloneVoicePopup] = useState(false);
+  const fileInputRef = useRef(null);
 
   // State from your snippet
   const [formData, setFormData] = useState({
@@ -114,6 +115,26 @@ export const CreateAvatar = () => {
         description: formData.description || 'portrait',
       });
     }
+  };
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post('/api/upload-avatar-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setFormData(prev => ({ ...prev, imageUrl: data.image_url }));
+    },
+  });
+
+  const handleUploadImage = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    uploadImageMutation.mutate(file);
   };
 
   const handleGeneratePrompt = () => {
@@ -220,14 +241,33 @@ export const CreateAvatar = () => {
                       className="w-full text-lg font-bold p-4 rounded-xl border-[3px] border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] outline-none bg-white"
                     />
                   </div>
-                  <PopButton
-                    onClick={handleGenerateImage}
-                    disabled={!formData.name || generateImageMutation.isPending}
-                    colorClass="bg-black text-white"
-                    icon={Wand2}
-                  >
-                    {generateImageMutation.isPending ? 'PAINTING...' : 'GENERATE IMAGE'}
-                  </PopButton>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <PopButton
+                      onClick={handleGenerateImage}
+                      disabled={!formData.name || generateImageMutation.isPending}
+                      colorClass="bg-black text-white"
+                      icon={Wand2}
+                    >
+                      {generateImageMutation.isPending ? 'PAINTING...' : 'GENERATE IMAGE'}
+                    </PopButton>
+
+                    <PopButton
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadImageMutation.isPending}
+                      colorClass="bg-white text-black"
+                      icon={ImageIcon}
+                    >
+                      {uploadImageMutation.isPending ? 'UPLOADING...' : 'UPLOAD PHOTO'}
+                    </PopButton>
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadImage}
+                    className="hidden"
+                  />
                 </div>
               </SectionCard>
 

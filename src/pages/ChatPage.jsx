@@ -86,7 +86,29 @@ export const ChatPage = () => {
       if (!response.ok) throw new Error(`Cloudinary upload failed: ${response.status}`);
 
       const data = await response.json();
-      console.log('Cloudinary URL:', data.secure_url || data.url);
+      const videoUrl = data.secure_url || data.url;
+      console.log('Cloudinary URL:', videoUrl);
+
+      // Send the Cloudinary URL to your backend for further processing
+      try {
+        const backendResponse = await fetch(
+          'https://besotted-mallory-prenebular.ngrok-free.dev/process-session',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              avatar_id: avatar?.id ?? avatar?.agent_id ?? 'unknown-avatar',
+              video_url: videoUrl,
+            }),
+          }
+        );
+
+        if (!backendResponse.ok) {
+          console.error('Backend processing failed:', backendResponse.status);
+        }
+      } catch (backendError) {
+        console.error('Error calling backend /process-session:', backendError);
+      }
     } catch (error) {
       console.error('Error uploading recorded session:', error);
     }

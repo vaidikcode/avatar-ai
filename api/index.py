@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 import os
 import requests
@@ -70,6 +70,39 @@ def generate_image(request: ImageRequest):
             "message": "Image generated successfully",
             "image_url": public_url,
             "avatar_name": request.name
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# OPTIONAL: Upload user-provided image & store to Supabase
+# ==========================================
+@app.post("/api/upload-avatar-image")
+async def upload_avatar_image(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+
+        # Generate a safe filename
+        timestamp = int(time.time())
+        original_name = file.filename or "avatar"
+        base, ext = os.path.splitext(original_name)
+        if not ext:
+            ext = ".jpg"
+        filename = f"{base.replace(' ', '_').lower()}_{timestamp}{ext}"
+
+        supabase.storage.from_(BUCKET_NAME).upload(
+            path=filename,
+            file=contents,
+            file_options={"content-type": file.content_type or "image/jpeg"}
+        )
+
+        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(filename)
+
+        return {
+            "message": "Image uploaded successfully",
+            "image_url": public_url,
         }
 
     except Exception as e:
