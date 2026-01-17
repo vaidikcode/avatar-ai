@@ -4,6 +4,8 @@ import { Dashboard } from './pages/Dashboard'
 import { CreateAvatar } from './pages/CreateAvatar'
 import { ChatPage } from './pages/ChatPage'
 import { OldCreationFlow } from './pages/OldCreationFlow'
+import ElderChat from './components/ElderChat'
+import AdminDashboard from './components/AdminDashboard'
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
         <Route path="/create" element={<CreateAvatar />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/old" element={<OldCreationFlow />} />
+        <Route path="/elder-chat" element={<ElderChat />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </Router>
   )
