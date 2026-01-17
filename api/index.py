@@ -161,3 +161,32 @@ def create_agent(request: AgentRequest):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# GET All Avatars from Database
+# ==========================================
+@app.get("/api/avatars")
+def get_avatars():
+    """Fetch all avatars from the Supabase database."""
+    try:
+        response = supabase.table('avatars').select('id, name, image_url, agent_id, system_prompt').execute()
+        
+        avatars = response.data if response.data else []
+        
+        # Handle null image_url with placeholder
+        placeholder_image = "https://via.placeholder.com/512x512/E0F2FE/1E293B?text=Avatar"
+        
+        for avatar in avatars:
+            if not avatar.get('image_url'):
+                avatar['image_url'] = placeholder_image
+        
+        return {
+            "message": "Avatars fetched successfully",
+            "count": len(avatars),
+            "avatars": avatars
+        }
+    
+    except Exception as e:
+        print(f"Error fetching avatars: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

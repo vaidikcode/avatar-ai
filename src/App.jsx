@@ -1,8 +1,23 @@
 import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import axios from 'axios'
 import { AgentChat } from './components/AgentChat'
+import { Dashboard } from './components/Dashboard'
+import { LandingPage } from './components/LandingPage'
 
 function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/old" element={<OldCreationFlow />} />
+      </Routes>
+    </Router>
+  )
+}
+
+function OldCreationFlow() {
   // Step 1: Name & Image Generation
   const [name, setName] = useState('')
   const [description, setDescription] = useState('portrait')
