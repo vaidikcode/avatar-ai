@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Plus, Sparkles, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Layout, LoadingBounce, Card } from '../components/Layout';
-import { AvatarModal } from '../components/AvatarModal';
 
 const fetchAvatars = async () => {
   const response = await axios.get('/api/avatars');
@@ -14,7 +13,6 @@ const fetchAvatars = async () => {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const [selectedAvatar, setSelectedAvatar] = useState(null);
 
   // Fetch avatars
   const { data: avatars = [], isLoading, error } = useQuery({
@@ -63,7 +61,7 @@ export const Dashboard = () => {
               transition={{ delay: index * 0.1, duration: 0.4 }}
             >
               <Card
-                onClick={() => setSelectedAvatar(avatar)}
+                onClick={() => navigate('/chat', { state: { avatar } })}
                 className="cursor-pointer group"
               >
                 <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gradient-to-br from-blue-100 to-purple-100">
@@ -110,16 +108,6 @@ export const Dashboard = () => {
           </motion.div>
         </div>
       </div>
-
-      {/* Avatar Modal */}
-      <AnimatePresence>
-        {selectedAvatar && (
-          <AvatarModal
-            avatar={selectedAvatar}
-            onClose={() => setSelectedAvatar(null)}
-          />
-        )}
-      </AnimatePresence>
     </Layout>
   );
 };
