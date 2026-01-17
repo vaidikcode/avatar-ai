@@ -223,3 +223,54 @@ def get_avatars():
     except Exception as e:
         print(f"Error fetching avatars: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# GET All Sessions from Database
+# ==========================================
+@app.get("/api/sessions")
+def get_sessions():
+    """Fetch all sessions with avatar info from the Supabase database."""
+    try:
+        # Fetch sessions with avatar details via join
+        response = supabase.table('sessions').select(
+            'id, created_at, avatar_id, video_url, audio_url, emotion_report, avatars(id, name, image_url)'
+        ).order('created_at', desc=True).execute()
+        
+        sessions = response.data if response.data else []
+        
+        return {
+            "message": "Sessions fetched successfully",
+            "count": len(sessions),
+            "sessions": sessions
+        }
+    
+    except Exception as e:
+        print(f"Error fetching sessions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==========================================
+# GET Single Session by ID
+# ==========================================
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str):
+    """Fetch a single session by ID with full details."""
+    try:
+        response = supabase.table('sessions').select(
+            'id, created_at, avatar_id, video_url, audio_url, emotion_report, avatars(id, name, image_url)'
+        ).eq('id', session_id).single().execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        return {
+            "message": "Session fetched successfully",
+            "session": response.data
+        }
+    
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error fetching session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

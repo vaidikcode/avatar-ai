@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Plus, Sparkles, MessageCircle, ArrowLeft, Home } from 'lucide-react';
+import { Plus, Sparkles, MessageCircle, ArrowLeft, Home, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Layout, LoadingBounce } from '../components/Layout';
@@ -86,7 +86,18 @@ export const Dashboard = () => {
               </span>
             </motion.button>
 
-            {/* Optional: User Profile / Settings Button could go here on the right */}
+            {/* Sessions Button */}
+            <motion.button
+              whileHover={{ x: 2, y: -2, boxShadow: "6px 6px 0px 0px black" }}
+              whileTap={{ x: 0, y: 0, boxShadow: "2px 2px 0px 0px black" }}
+              onClick={() => navigate('/sessions')}
+              className="bg-[#A29BFE] px-5 py-3 rounded-xl border-[3px] border-black shadow-[4px_4px_0px_0px_black] flex items-center gap-2 group transition-all"
+            >
+              <Activity size={20} strokeWidth={3} className="text-black" />
+              <span className="font-black text-black text-sm md:text-base uppercase tracking-wide">
+                Session History
+              </span>
+            </motion.button>
           </div>
 
           {/* HEADER CONTENT */}
